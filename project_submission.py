@@ -49,6 +49,29 @@ class DescribeBikeShare:
         self.user_choice = input('What topic do you want to focus on? Type "None" at any point to exit the program : ')
         self.process_first_answer()
 
+    def print_and_ask(self):
+        """
+        Show the first 5 rows automatically, ask user if they would like to see 5 more
+        """
+        # print results
+        n_rows = self.grouped.shape[0]
+        ind = 0
+        print(self.grouped.iloc[ind: ind + 5])
+        while ind < n_rows:
+            self.show_more = input('Would you like to see 5 more rows? (yes or no): ')
+            if self.show_more.lower().strip() in ['none', "none"]:
+                print(self.goodbye_message)
+                return
+            elif self.show_more.lower().strip() not in ['yes', 'no', 'none', '"none"']:
+                print('Please respond with yes or no (or None to quit) : ')
+            elif self.show_more.lower().strip() == 'yes':
+                ind += 5
+                print(self.grouped.iloc[ind: ind + 5])
+            else:
+                break
+        print('Done viewing raw data ...')
+        print('Would you like to see a visualization?')
+
     def describe(self):
         """
         Show summary statistics based on the answer to the first question
@@ -61,7 +84,7 @@ class DescribeBikeShare:
             self.grouped = self.data.groupby(by = ['city', pd.Grouper(key='Start Time', freq = resample_choice)])\
                             .size().reset_index(name = '{}_volume'.format(time_choice))\
                                 .sort_values(by = 'Start Time', ascending = True).reset_index(drop = True)
-            print(self.grouped)
+            self.print_and_ask()
     
     def process_first_answer(self):
         """
