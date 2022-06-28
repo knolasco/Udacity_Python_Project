@@ -16,6 +16,8 @@ class DescribeBikeShare:
         Initialize the names of the files we will choose to open.
         Initialize a data dictionary to interpret the user input.
         """
+        # first welcome message
+        print('Hello! Welcome to the BikeShare Interactive EDA.\n')
         self.chicago = 'chicago.csv'
         self.new_york = 'new_york_city.csv'
         self.washington = 'washington.csv'
@@ -39,7 +41,7 @@ class DescribeBikeShare:
         """
         # print message
         self.n_stars = 50
-        print('Hello! Welcome to the BikeShare Interactive EDA. Below are the possible topics you can choose from.\n')
+        print('Below are the possible topics you can choose from.')
         print('*'*self.n_stars)
         print('1. Compare bike usage by city')
         print('2. Find high and low traffic times')
@@ -70,7 +72,6 @@ class DescribeBikeShare:
             else:
                 break
         print('Done viewing raw data ...')
-        print('Would you like to see a visualization?')
 
     def describe(self):
         """
@@ -81,11 +82,45 @@ class DescribeBikeShare:
             resample_choice = self.third_question_dict[self.third_answer_choice][1]
             print('\nYou chose to {} {}'.format(self.first_question_dict[self.first_answer_choice], time_choice))
             print('Below we see the volume by city, ordered by largest volume to smallest, aggregated {}'.format(time_choice))
+            self.volume_col = '{}_volume'.format(time_choice)
             self.grouped = self.data.groupby(by = ['city', pd.Grouper(key='Start Time', freq = resample_choice)])\
-                            .size().reset_index(name = '{}_volume'.format(time_choice))\
+                            .size().reset_index(name = self.volume_col)\
                                 .sort_values(by = 'Start Time', ascending = True).reset_index(drop = True)
             self.print_and_ask()
+            
+        self.visualization_answer = input('Would you like to see a visualization? (yes or no) : ')
+        self.process_visualization_response()
     
+    def process_visualization_response(self):
+        """
+        Deal with the visualization answer
+        """
+        self.visualization_answer_cleaned = self.visualization_answer.lower().strip()
+        if self.visualization_answer_cleaned in ['none', "none"]:
+            print(self.goodbye_message)
+            return
+        elif self.visualization_answer_cleaned not in ['yes', 'no', 'none', '"none"']:
+            self.visualization_answer = input('Please respond with yes or no (or None to quit) : ')
+            self.process_visualization_response()
+        elif self.visualization_answer_cleaned == 'yes':
+            self.visualize()
+        else:
+            print('Okay, we won\'t visualize the data for this question.\n')
+        self.ask()
+
+    def visualize(self):
+        """
+        Visualize the results based on the first question option.
+        """
+        # set up plots
+        fig, axs = plt.subplots(1,1)
+        fig.set_size_inches(10,10)
+
+        if self.first_answer_choice == 1:
+            g = sns.lineplot(data = self.grouped, x = 'Start Time', y = self.volume_col, hue = 'city')
+        
+        plt.show()
+
     def process_first_answer(self):
         """
         Figure out what the user chose.
