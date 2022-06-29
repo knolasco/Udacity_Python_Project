@@ -27,8 +27,8 @@ class DescribeBikeShare:
         self.num_to_city = {1 : 'chicago',
                             2 : 'new york',
                             3 : 'washington'}
-        self.first_question_dict = {1 : 'Compare bike usage by city',
-                                    2 : 'Find high and low traffic times',
+        self.first_question_dict = {1 : 'Compare Bike Usage by City',
+                                    2 : 'Find High and Low Traffic Times',
                                     3 : 'Compare User Statistics'}
         self.third_question_dict = {1 : ['daily', 'D'],
                                     2 : ['weekly', 'W-MON'],
@@ -43,8 +43,8 @@ class DescribeBikeShare:
         self.n_stars = 50
         print('Below are the possible topics you can choose from.')
         print('*'*self.n_stars)
-        print('1. Compare bike usage by city')
-        print('2. Find high and low traffic times')
+        print('1. Compare Bike Usage by City')
+        print('2. Find High and Low Traffic Times')
         print('3. Compare User Statistics')
         print('*'*self.n_stars + '\n')
 
@@ -77,17 +77,38 @@ class DescribeBikeShare:
         """
         Show summary statistics based on the answer to the first question
         """
+        time_choice = self.third_question_dict[self.third_answer_choice][0]
+        resample_choice = self.third_question_dict[self.third_answer_choice][1]
+        print('\nYou chose to {} {}'.format(self.first_question_dict[self.first_answer_choice], time_choice))
+        self.volume_col = '{}_volume'.format(time_choice)
+        
         if self.first_answer_choice == 1:
-            time_choice = self.third_question_dict[self.third_answer_choice][0]
-            resample_choice = self.third_question_dict[self.third_answer_choice][1]
-            print('\nYou chose to {} {}'.format(self.first_question_dict[self.first_answer_choice], time_choice))
+            self.hue_choice = 'city'    
             print('Below we see the volume by city, ordered by largest volume to smallest, aggregated {}'.format(time_choice))
-            self.volume_col = '{}_volume'.format(time_choice)
             self.grouped = self.data.groupby(by = ['city', pd.Grouper(key='Start Time', freq = resample_choice)])\
                             .size().reset_index(name = self.volume_col)\
                                 .sort_values(by = 'Start Time', ascending = True).reset_index(drop = True)
             self.print_and_ask()
-            
+        
+        elif self.first_answer_choice == 2:
+            self.hue_choice = 'Traffic Pattern'
+            print('Below we see the highest and lowest traffic times, ordered by largest volume to smallest, aggregated {}'.format(time_choice))
+            self.data['Start_hour'] = self.data['Start Time']
+            self.grouped = self.data.groupby(by = [pd.Grouper(key='Start Time', freq = resample_choice), self.data['Start_hour'].dt.hour])\
+                            .size().reset_index(name = self.volume_col)\
+                                .sort_values(by = ['Start Time', self.volume_col], ascending = [True, False]).reset_index(drop = True)
+            self.grouped = self.grouped.groupby('Start Time').agg(['first', 'last']).stack().reset_index()
+            self.grouped['level_1'] = self.grouped['level_1'].apply(lambda level: 'High Traffic' if level == 'first' else 'Low Traffic')
+            self.grouped.rename({'level_1' : 'Traffic Pattern'}, axis = 1, inplace = True)
+            self.print_and_ask()
+        else:
+            self.hue_choice = 'User Type'
+            print('Below we see the volume based on user type, ordered by largest volume to smallest, aggregated {}'.format(time_choice))
+            self.grouped = self.data.groupby(by = [pd.Grouper(key='Start Time', freq = resample_choice), 'User Type'])\
+                            .size().reset_index(name = self.volume_col)\
+                                .sort_values(by = ['Start Time', self.volume_col], ascending = [True, False]).reset_index(drop = True)
+            self.print_and_ask()
+
         self.visualization_answer = input('Would you like to see a visualization? (yes or no) : ')
         self.process_visualization_response()
     
@@ -110,15 +131,19 @@ class DescribeBikeShare:
 
     def visualize(self):
         """
-        Visualize the results based on the first question option.
+        Visualize the results. Line plot with start time in x-axis
         """
         # set up plots
-        fig, axs = plt.subplots(1,1)
-        fig.set_size_inches(10,10)
-
+        fig, _ = plt.subplots(1,1)
+        fig.set_size_inches(20,10)
         if self.first_answer_choice == 1:
-            g = sns.lineplot(data = self.grouped, x = 'Start Time', y = self.volume_col, hue = 'city')
-        
+            g = sns.lineplot(data = self.grouped, x = 'Start Time', y = self.volume_col, hue = self.hue_choice)
+        elif self.first_answer_choice == 2:
+            g = sns.lineplot(data = self.grouped, x = 'Start Time', y = 'Start_hour', hue = self.hue_choice)
+        else:
+            g = sns.lineplot(data = self.grouped, x = 'Start Time', y = self.volume_col, hue = self.hue_choice)
+
+        g.set(title = 'Line Plot for "{}" aggregated {}'.format(self.first_question_dict[self.first_answer_choice], self.third_question_dict[self.third_answer_choice][0]))
         plt.show()
 
     def process_first_answer(self):
@@ -213,6 +238,9 @@ class DescribeBikeShare:
         self.describe()
 
     def load_files(self, cities = 'all'):
+        """
+        Load and concat based on response
+        """
         if cities == 'all':
             self.chicago_df = pd.read_csv(os.path.join(DATA_PATH, self.chicago))
             self.ny_df = pd.read_csv(os.path.join(DATA_PATH, self.new_york))
