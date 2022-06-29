@@ -56,13 +56,15 @@ class DescribeBikeShare:
         Show the first 5 rows automatically, ask user if they would like to see 5 more
         """
         # print results
+        self.exit_script = False
         n_rows = self.grouped.shape[0]
         ind = 0
         print(self.grouped.iloc[ind: ind + 5])
         while ind < n_rows:
             self.show_more = input('Would you like to see 5 more rows? (yes or no): ')
-            if self.show_more.lower().strip() in ['none', "none"]:
+            if self.show_more.lower().strip() in ['none', '"none"']:
                 print(self.goodbye_message)
+                self.exit_script = True
                 return
             elif self.show_more.lower().strip() not in ['yes', 'no', 'none', '"none"']:
                 print('Please respond with yes or no (or None to quit) : ')
@@ -71,7 +73,10 @@ class DescribeBikeShare:
                 print(self.grouped.iloc[ind: ind + 5])
             else:
                 break
-        print('Done viewing raw data ...')
+        if not self.exit_script:
+            print('Done viewing raw data ...')
+        else:
+            return
 
     def describe(self):
         """
@@ -109,15 +114,18 @@ class DescribeBikeShare:
                                 .sort_values(by = ['Start Time', self.volume_col], ascending = [True, False]).reset_index(drop = True)
             self.print_and_ask()
 
-        self.visualization_answer = input('Would you like to see a visualization? (yes or no) : ')
-        self.process_visualization_response()
+        if not self.exit_script:
+            self.visualization_answer = input('Would you like to see a visualization? (yes or no) : ')
+            self.process_visualization_response()
+        else:
+            return
     
     def process_visualization_response(self):
         """
         Deal with the visualization answer
         """
         self.visualization_answer_cleaned = self.visualization_answer.lower().strip()
-        if self.visualization_answer_cleaned in ['none', "none"]:
+        if self.visualization_answer_cleaned in ['none', '"none"']:
             print(self.goodbye_message)
             return
         elif self.visualization_answer_cleaned not in ['yes', 'no', 'none', '"none"']:
